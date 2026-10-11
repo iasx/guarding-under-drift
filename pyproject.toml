@@ -1,0 +1,45 @@
+[project]
+name = "guarding-under-drift"
+version = "0.1.0"
+description = "Safety filters, blends and a CO2 guard for learned control of a drifting penicillin fermentation (IndPenSim)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "pandas>=2.2",
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "h5py>=3.10",
+    "gymnasium>=1.0",
+    "torch>=2.14",
+    "neuraloperator>=2.0.0",
+    "pysindy>=2.1.0",
+    "casadi>=3.6",
+    "pensimpy",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.6"]
+
+[tool.uv.sources]
+# A fork of smpl-env/PenSimPy ported to Python 3.12 and numpy 2, with a gymnasium wrapper and fixes to the recipe
+# timing, disturbance seeding, offline assays and episode reset; the PyPI release cannot be installed here.
+pensimpy = { git = "https://github.com/iasx/PenSimPy.git", rev = "667348d21a9b45dbcc5a8896c10d3d2348649bd2" }
+torch = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[build-system]
+requires = ["uv_build>=0.9.18,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "sindy_fno"
+module-root = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
