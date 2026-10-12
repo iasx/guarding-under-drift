@@ -81,6 +81,10 @@ class PenSimPlant(gym.Env):
         self.env.random_seed_ref = self._seed
         self._rng = np.random.default_rng([self._seed, 0xA5])
         _, self._x = self.env.reset()
+        import pensimpy.ode.indpensim_ode_py as ode
+
+        ode.CO2_INHIBITION_HALF_WIDTH = self.scenario.co2_inhibition_half_width
+        ode.CO2_INHIBITION_OFF = self.scenario.co2_inhibition_off
         self._apply_initial_condition_scale()
         for name, factor in self.scenario.param_scale.items():
             self.env.param_list[PARAM_INDEX[name]] *= factor

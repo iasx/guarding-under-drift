@@ -24,7 +24,7 @@ dev = ["ruff>=0.6"]
 [tool.uv.sources]
 # A fork of smpl-env/PenSimPy ported to Python 3.12 and numpy 2, with a gymnasium wrapper and fixes to the recipe
 # timing, disturbance seeding, offline assays and episode reset; the PyPI release cannot be installed here.
-pensimpy = { git = "https://github.com/iasx/PenSimPy.git", rev = "667348d21a9b45dbcc5a8896c10d3d2348649bd2" }
+pensimpy = { git = "https://github.com/iasx/PenSimPy.git", rev = "d0f2887d0945364777687569a67e5217a31ea2aa" }
 torch = { index = "pytorch-cu130" }
 
 [[tool.uv.index]]

@@ -26,8 +26,10 @@ SWITCH, DEEP = 7.57, 1.5
 PERMUTATIONS = 20_000
 FILES = ("summary_main.csv", "summary_tightened_filters.csv", "summary_matched_margin.csv", "summary_margin_sweep.csv",
          "summary_mechanism.csv", "summary_co2_oracle.csv", "summary_margin_co2_oracle.csv", "summary_heldout.csv",
-         "summary_co2_heldout.csv", "summary_co2_sensor.csv", "summary_simplex.csv", "summary_guard_margins.csv")
-UNGUARDED = ("projected24c-0.8", "projected24c-0.6", "projected24s", MARGIN)
+         "summary_co2_heldout.csv", "summary_co2_sensor.csv", "summary_simplex.csv", "summary_guard_margins.csv",
+         "summary_margins_heldout.csv", "summary_co2_off.csv")
+UNGUARDED = ("projected24c-0.8", "projected24c-0.6", "projected24s", MARGIN, TIGHT)
+DRIFTS = ("S5", "S5fast")
 
 
 def load() -> pd.DataFrame:
@@ -46,6 +48,15 @@ def mcnemar(d: pd.DataFrame, a: str, b: str, sc: str, col: str, seeds: range) ->
             "a_count": int(v[a].sum()), "b_count": int(v[b].sum()), "p": float(p)}
 
 
+def mcnemar_plants(d: pd.DataFrame, c: str, real: str, counterfactual: str, col: str, seeds: range) -> dict:
+    """One controller on the simulator and on the plant without CO2 inhibition, paired by seed."""
+    v = d[(d.controller == c) & d.seed.isin(seeds)].pivot_table(index="seed", columns="scenario", values=col)[[real, counterfactual]].dropna()
+    only_a, only_b = int(((v[real] == 1) & (v[counterfactual] == 0)).sum()), int(((v[real] == 0) & (v[counterfactual] == 1)).sum())
+    p = stats.binomtest(only_a, only_a + only_b, 0.5).pvalue if only_a + only_b else 1.0
+    return {"kind": f"{col} batches", "a": f"{c} on {real}", "b": f"{c} on {counterfactual}", "scenario": real,
+            "seeds": f"{seeds.start}-{seeds.stop - 1}", "n": len(v), "a_count": int(v[real].sum()), "b_count": int(v[counterfactual].sum()), "p": float(p)}
+
+
 def yield_test(d: pd.DataFrame, a: str, b: str, sc: str, seeds: range) -> dict:
     r = paired(d[d.seed.isin(seeds)], a, b, sc)
     return {"kind": "yield, kg", "a": a, "b": b, "scenario": sc, "seeds": f"{seeds.start}-{seeds.stop - 1}", "n": r["n"],
@@ -57,10 +68,12 @@ def crossing_batches() -> pd.DataFrame:
     """Drift batches of the filters without a CO2 guard: did CO2 cross the switch after the drift onset, did oxygen collapse."""
     rows = []
     for c in UNGUARDED:
-        for f in glob.glob(str(RES / f"traj_{c}_S5*_20*.csv.gz")):
-            t = pd.read_csv(f)
-            if "CO2_d" in t:
-                rows.append({"stratum": f"{c}/{'S5fast' if 'S5fast' in f else 'S5'}",
+        for sc in DRIFTS:
+            for f in glob.glob(str(RES / f"traj_{c}_{sc}_20*.csv.gz")):
+                t = pd.read_csv(f)
+                if "CO2_d" not in t:
+                    continue
+                rows.append({"stratum": f"{c}/{sc}",
                              "crossed": bool((t.loc[t.t_h >= 100, "CO2_d"] >= SWITCH).any()), "deep": bool((t.DO2 <= DEEP).any())})
     return pd.DataFrame(rows)
 
@@ -77,7 +90,7 @@ def co2_permutation(rng: np.random.Generator) -> dict:
             perm[idx] = rng.permutation(deep[idx])
         hits += int((crossed & perm).sum()) >= observed
     return {"kind": "CO2 crossing vs deep collapse", "a": "crossed the switch", "b": "stayed below", "scenario": "S5, S5fast",
-            "seeds": "2011-2022", "n": len(b), "a_count": observed, "b_count": int((~b.crossed & b.deep).sum()),
+            "seeds": "2011-2034", "n": len(b), "a_count": observed, "b_count": int((~b.crossed & b.deep).sum()),
             "p": (hits + 1) / (PERMUTATIONS + 1)}
 
 
@@ -92,6 +105,9 @@ def main() -> None:
     rows += [yield_test(d, GUARDED, SIMPLEX, sc, both) for sc in ("S1", "S5")]
     rows.append(mcnemar(d, GUARD_AT[0], GUARD_AT[3], "S5", "violating", both))
     rows += [yield_test(d, GUARD_AT[2], GUARD_AT[3], sc, both) for sc in ("S1", "S5")]
+    rows.append(mcnemar(d, "projected24m:5", GUARDED, "S5", "violating", both))
+    rows.append(mcnemar_plants(d, TIGHT, "S5", "S5noco2", "deep", both))
+    rows.append(mcnemar_plants(d, MARGIN, "S5", "S5noco2", "violating", both))
     t = pd.DataFrame(rows)
     t["p_holm"] = holm(t.p.tolist())
     t.to_csv(RES / "article_stats.csv", index=False)

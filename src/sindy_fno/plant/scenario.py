@@ -67,6 +67,8 @@ class ScenarioConfig:
     initial_condition_scale: dict[str, float] = field(default_factory=dict)
     faults: int = 0
     sensor_bias: dict[str, BiasRamp] = field(default_factory=dict)
+    co2_inhibition_half_width: float | None = None   # graded CO2 inhibition instead of the simulator's step
+    co2_inhibition_off: bool = False                  # no CO2 inhibition of growth at all
 
     def __post_init__(self) -> None:
         for name in (*self.param_scale, *self.drift):

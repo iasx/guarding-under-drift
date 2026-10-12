@@ -35,3 +35,21 @@ run co2_heldout "$SECOND" --controllers projected24k projected24mk
 run co2_sensor "$FIRST $SECOND" --controllers projected24ms
 run simplex "$FIRST $SECOND" --controllers projected24mx
 run guard_margins "$FIRST $SECOND" --scenarios S1 S5 --controllers projected24ms:0 projected24ms:1 projected24ms:2
+
+# Validity tests (Supplementary Table S5). The tightened and margin filters again with dissolved CO2 logged, for the
+# crossing analysis on all 24 seeds; the same filters on a plant without CO2 inhibition; the CO2 oracle at the soft
+# sensor's switching points; the Simplex switch falling back to the recipe; the 4 and 5 mg/L margins on the held-out
+# seeds; constant blends leaning further on the actor; graded inhibition; drift dose; a misplaced guard and a biased
+# sensor.
+ALL="$FIRST $SECOND"
+run co2_log_filters "$ALL" --scenarios S5 S5fast --controllers projected24t projected24m
+run co2_off "$ALL" --scenarios S5noco2 S5fastnoco2 --controllers recipe projected24t projected24m
+run oracle_sensor_points "$ALL" --scenarios S1 S5 --controllers projected24mk:3:on7.35
+run simplex_recipe "$ALL" --scenarios S1 S5 --controllers projected24mx:3:recipe
+run margins_heldout "$SECOND" --controllers projected24m:4 projected24m:5
+run blend_sweep "$ALL" --scenarios S1 S5 --controllers hybrid:fixed:0.6 hybrid:fixed:0.75 hybrid:fixed:0.9
+run graded_inhibition "$ALL" --scenarios S1g05 S5g01 S5g05 --controllers recipe projected24m projected24ms hybrid:convex:nofsm
+run drift_dose "$ALL" --scenarios S5k06 S5k05 S5k03 --controllers recipe projected24m projected24ms hybrid:convex:nofsm
+run guard_misspecification "$ALL" --scenarios S1 S5 \
+    --controllers projected24ms:3:on7.0 projected24ms:3:on7.2 projected24ms:3:on7.5 projected24ms:3:on7.7 \
+                  projected24ms:3:bias-0.2 projected24ms:3:bias0.2

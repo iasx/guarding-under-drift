@@ -64,7 +64,7 @@ class FilteredActor(ProjectedActor):
 
     def __init__(self, models_dir: str | Path = "models", mpc_cfg: MPCConfig | None = None, deviation_max: float = 0.5, device: str = "cpu",
                  agent_path: str | Path | None = None, surrogate_dir: str | Path | None = None, variant: str = "plain",
-                 margin: float = 3.0) -> None:
+                 margin: float = 3.0, guard_on: float | None = None, sensor_bias: float = 0.0, fallback: str = "mpc") -> None:
         super().__init__(models_dir, mpc_cfg, deviation_max, device, agent_path, surrogate_dir)
         from sindy_fno.safe.filter import SafetyFilterMPC, TightenedSafetyFilter
 
@@ -92,6 +92,11 @@ class FilteredActor(ProjectedActor):
             from sindy_fno.safe.co2_sensor import CO2Sensor
 
             self.co2_sensor = CO2Sensor(Path(models_dir) / "hybrid" / "co2_sensor.json", OBS_NAMES)
+        # The guard switches on above guard_on and off 0.1 below it; the defaults are 7.45 for the oracle and 7.35 for
+        # the soft sensor, whose 95th-percentile error near the switch is about 0.2.
+        self.guard_on = guard_on
+        self.sensor_bias = sensor_bias
+        self.fallback = fallback
         self._guard = False
         self._u_prev = None
 
@@ -121,18 +126,19 @@ class FilteredActor(ProjectedActor):
         if self.co2_oracle:
             from sindy_fno.plant.channels import HIDDEN
 
-            u_exec = self._co2_guard(u_exec, float(np.asarray(info["hidden"], float)[HIDDEN.index("CO2_d")]), t_next, on=7.45, off=7.35)
+            on = 7.45 if self.guard_on is None else self.guard_on
+            u_exec = self._co2_guard(u_exec, float(np.asarray(info["hidden"], float)[HIDDEN.index("CO2_d")]), t_next, on=on, off=on - 0.1)
         branch = "adaptive"
         if self.co2_sensor is not None:
-            # The sensor's 95th-percentile error near the switch is about 0.2, so it acts 0.1 earlier than the oracle.
-            co2_est = self.co2_sensor.estimate(obs)
+            co2_est = self.co2_sensor.estimate(obs) + self.sensor_bias
+            on = 7.35 if self.guard_on is None else self.guard_on
             if self.simplex:
-                self._guard = co2_est > 7.35 or (self._guard and co2_est > 7.25)
+                self._guard = co2_est > on or (self._guard and co2_est > on - 0.1)
             else:
-                u_exec = self._co2_guard(u_exec, co2_est, t_next, on=7.35, off=7.25)
+                u_exec = self._co2_guard(u_exec, co2_est, t_next, on=on, off=on - 0.1)
         a_exec = physical_to_action(u_exec, t_next, self.deviation_max)
         if self.simplex and self._guard:
-            a_exec = self._safe_action(obs, x_hat, exo, offset, t_next)
+            a_exec = np.zeros_like(a_exec) if self.fallback == "recipe" else self._safe_action(obs, x_hat, exo, offset, t_next)
             u_exec = action_to_physical(a_exec, t_next, self.deviation_max)
             branch = "safe"
         elif self.simplex:

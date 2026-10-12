@@ -9,7 +9,9 @@ row per batch to ``results/summary_<tag>.csv``.
 Controllers: ``recipe``; ``safe`` (the MPC on the identified model); ``hybrid:convex:nofsm`` (the monitored blend);
 ``hybrid:fixed:<w>`` (the constant blend); ``policy=<dir>`` (a learned actor on its own, e.g. ``policy=sac_s0``);
 and the safety filters below, where ``projected24m:<mg/L>`` and ``projected24ms:<mg/L>`` set the added oxygen margin
-(3 mg/L when omitted) and ``projected24c:<scale>`` the feed-bound scale.
+(3 mg/L when omitted) and ``projected24c:<scale>`` the feed-bound scale. Guarded filters take further options:
+``:on<value>`` for the guard's switching point, ``:bias<value>`` for a soft-sensor offset, and ``:recipe`` for a Simplex
+switch that falls back to the recipe (e.g. ``projected24ms:3:on7.0``, ``projected24mx:3:recipe``).
 """
 
 from __future__ import annotations
@@ -31,6 +33,16 @@ SCENARIOS = {
     "S1": {},
     "S5": {"drift": {"alpha_kla": (100.0, 200.0, 0.4), "mu_P": (100.0, 200.0, 0.7)}},
     "S5fast": {"drift": {"alpha_kla": (100.0, 130.0, 0.4), "mu_P": (100.0, 130.0, 0.7)}},
+    # Dose-response: oxygen transfer falling to 0.6, 0.5 or 0.3 of nominal over the gradual ramp.
+    **{f"S5k{int(10 * k):02d}": {"drift": {"alpha_kla": (100.0, 200.0, k), "mu_P": (100.0, 200.0, 0.7)}} for k in (0.6, 0.5, 0.3)},
+    # Graded CO2 inhibition of half-width 0.1 or 0.5 instead of the simulator's step, nominal and under gradual drift.
+    **{f"S1g{int(10 * w):02d}": {"co2_half_width": w} for w in (0.1, 0.5)},
+    **{f"S5g{int(10 * w):02d}": {"co2_half_width": w, "drift": {"alpha_kla": (100.0, 200.0, 0.4), "mu_P": (100.0, 200.0, 0.7)}}
+       for w in (0.1, 0.5)},
+    # The counterfactual plant without the CO2 growth inhibition, nominal and under both drifts.
+    "S1noco2": {"co2_off": True},
+    "S5noco2": {"co2_off": True, "drift": {"alpha_kla": (100.0, 200.0, 0.4), "mu_P": (100.0, 200.0, 0.7)}},
+    "S5fastnoco2": {"co2_off": True, "drift": {"alpha_kla": (100.0, 130.0, 0.4), "mu_P": (100.0, 130.0, 0.7)}},
 }
 BATCH_END_H = 230.0
 FILTER_VARIANTS = {"projected24t": "tightened", "projected24m": "tightened_margin", "projected24c": "tightened_capacity",
@@ -64,8 +76,10 @@ def make_plant(scenario_name: str, seed: int):
     """The plant under a named scenario, reset on ``seed``; returns (plant, obs, info)."""
     from sindy_fno.plant import DriftRamp, PenSimPlant, ScenarioConfig
 
-    drift = {k: DriftRamp(*v) for k, v in SCENARIOS[scenario_name].get("drift", {}).items()}
-    plant = PenSimPlant(scenario=ScenarioConfig(drift=drift))
+    spec = SCENARIOS[scenario_name]
+    drift = {k: DriftRamp(*v) for k, v in spec.get("drift", {}).items()}
+    plant = PenSimPlant(scenario=ScenarioConfig(drift=drift, co2_inhibition_half_width=spec.get("co2_half_width"),
+                                                co2_inhibition_off=spec.get("co2_off", False)))
     obs, info = plant.reset(seed=seed)
     return plant, obs, info
 
@@ -95,7 +109,13 @@ def build_controller(controller: str, obs, seed: int, models_dir):
         return lambda o, i: (pol.act(o, i), {})
     if kind in FILTER_VARIANTS:
         default = DEFAULT_PARAMETER.get(kind, 3.0)
-        fa = FilteredActor(models_dir, variant=FILTER_VARIANTS[kind], margin=float(law) if law else default)
+        # Further options: on<value> moves the CO2 guard's switching point, bias<value> offsets the soft sensor, and
+        # recipe makes the Simplex switch fall back to the recipe instead of the MPC.
+        opts = parts[2:]
+        guard_on = next((float(x[2:]) for x in opts if x.startswith("on")), None)
+        sensor_bias = next((float(x[4:]) for x in opts if x.startswith("bias")), 0.0)
+        fa = FilteredActor(models_dir, variant=FILTER_VARIANTS[kind], margin=float(law) if law else default, guard_on=guard_on,
+                           sensor_bias=sensor_bias, fallback="recipe" if "recipe" in opts else "mpc")
         fa.reset(obs, seed=seed)
         return lambda o, i: fa.act(o, i)
     if kind == "safe":

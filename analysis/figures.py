@@ -52,12 +52,12 @@ def arrow(ax, p, q, ls="-", color=INK, lw=0.9):
 
 def co2_batches() -> pd.DataFrame:
     """Peak dissolved CO2 after the drift onset and minimum oxygen for every drift batch with CO2 logged."""
-    groups = {"filters without a CO$_2$ guard": ["projected24c-0.8", "projected24c-0.6", "projected24s", MARGIN],
+    groups = {"filters without a CO$_2$ guard": ["projected24t", "projected24c-0.8", "projected24c-0.6", "projected24s", MARGIN],
               "guarded filter": [GUARDED], "blends": [BLEND, "hybrid-fixed-0.5"]}
     rows = []
     for group, ctrls in groups.items():
         for c in ctrls:
-            for f in glob.glob(str(RES / f"traj_{c}_S5*_20*.csv.gz")):
+            for f in [*glob.glob(str(RES / f"traj_{c}_S5_20*.csv.gz")), *glob.glob(str(RES / f"traj_{c}_S5fast_20*.csv.gz"))]:
                 t = pd.read_csv(f)
                 if "CO2_d" not in t:
                     continue
@@ -159,14 +159,14 @@ def fig_margin() -> None:
     runs = {0: ("summary_tightened_filters.csv", "projected24t"), 3: ("summary_matched_margin.csv", "projected24m"),
             **{m: ("summary_margin_sweep.csv", f"projected24m:{m}") for m in (1, 2, 4, 5)}}
     guarded = pd.concat([pd.read_csv(RES / f) for f in ("summary_co2_sensor.csv", "summary_guard_margins.csv")], ignore_index=True)
-    held = pd.read_csv(RES / "summary_heldout.csv")
+    held = pd.concat([pd.read_csv(RES / f) for f in ("summary_heldout.csv", "summary_margins_heldout.csv")], ignore_index=True)
     blend = pd.read_csv(RES / "summary_main.csv")
     fig, axes = plt.subplots(1, 2, figsize=(17 * CM, 7 * CM), sharey=True)
     for ax, sc, title in ((axes[0], "S5", "Gradual drift"), (axes[1], "S5fast", "Fast drift")):
         sweep = pd.DataFrame([{"margin": m, "violating": int(violating(t[(t.controller == c) & (t.scenario == sc) & t.seed.between(2011, 2022)]).sum())}
                               for m, (f, c) in sorted(runs.items()) for t in [pd.read_csv(RES / f)]])
         sns.lineplot(data=sweep, x="margin", y="violating", marker="o", color=FILTER_C, ax=ax, label="filter, seeds 2011–2022", legend=False)
-        for m, c in ((0, "projected24t"), (3, "projected24m")):
+        for m, c in ((0, "projected24t"), (3, "projected24m"), (4, "projected24m:4"), (5, "projected24m:5")):
             ax.plot(m, int(violating(held[(held.controller == c) & (held.scenario == sc)]).sum()), marker="D", ms=5, mfc="white", mec=FILTER_C, mew=1.2, ls="none")
         for seeds, mk, ls in (((2011, 2022), "^", "-"), ((2023, 2034), "v", (0, (1, 1.5)))):
             g = guarded[guarded.seed.between(*seeds)]

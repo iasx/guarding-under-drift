@@ -330,7 +330,7 @@ requires-dist = [
     { name = "neuraloperator", specifier = ">=2.0.0" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "pandas", specifier = ">=2.2" },
-    { name = "pensimpy", git = "https://github.com/iasx/PenSimPy.git?rev=667348d21a9b45dbcc5a8896c10d3d2348649bd2" },
+    { name = "pensimpy", git = "https://github.com/iasx/PenSimPy.git?rev=d0f2887d0945364777687569a67e5217a31ea2aa" },
     { name = "pysindy", specifier = ">=2.1.0" },
     { name = "scipy", specifier = ">=1.14" },
     { name = "seaborn", specifier = ">=0.13" },
@@ -877,7 +877,7 @@ wheels = [
 [[package]]
 name = "pensimpy"
 version = "0.1.0"
-source = { git = "https://github.com/iasx/PenSimPy.git?rev=667348d21a9b45dbcc5a8896c10d3d2348649bd2#667348d21a9b45dbcc5a8896c10d3d2348649bd2" }
+source = { git = "https://github.com/iasx/PenSimPy.git?rev=d0f2887d0945364777687569a67e5217a31ea2aa#d0f2887d0945364777687569a67e5217a31ea2aa" }
 dependencies = [
     { name = "gymnasium" },
     { name = "numpy" },

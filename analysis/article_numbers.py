@@ -51,10 +51,27 @@ def tables(d: pd.DataFrame) -> None:
     print(pd.DataFrame(rows, columns=["filter", "nominal", "gradual", "deep", "lowest DO", "fast"]).to_string(index=False))
 
 
-def trajectories(controllers, pattern: str = "S5*") -> dict[str, pd.DataFrame]:
+def spread(d: pd.DataFrame) -> None:
+    """Supplementary Table S4: median and interquartile range over seeds of the yield relative to the recipe."""
+    rec = d[d.controller == "recipe"].set_index(["scenario", "seed"]).yield_kg
+    print("\nSupplementary Table S4: median [25th, 75th percentile] of the yield relative to the recipe, %")
+    for seeds in (FIRST, SECOND):
+        for name, c in TABLE1:
+            cells = []
+            for sc in ("S1", "S5", "S5fast"):
+                g = d[(d.controller == c) & (d.scenario == sc) & d.seed.between(*seeds)]
+                r = 100 * (np.array([y / rec[(sc, s)] for y, s in zip(g.yield_kg, g.seed)]) - 1)
+                q1, med, q3 = np.percentile(r, [25, 50, 75])
+                cells.append(f"{med:+.0f} [{q1:+.0f}, {q3:+.0f}]")
+            print(f"| {seeds[0]}-{seeds[1]} | {name} | " + " | ".join(cells) + " |")
+
+
+def trajectories(controllers, patterns=("S5", "S5fast")) -> dict[str, pd.DataFrame]:
     out = {}
+    if isinstance(patterns, str):
+        patterns = (patterns,)
     for c in controllers:
-        for f in glob.glob(str(RES / f"traj_{c}_{pattern}_20*.csv.gz")):
+        for f in [g for p in patterns for g in glob.glob(str(RES / f"traj_{c}_{p}_20*.csv.gz"))]:
             t = pd.read_csv(f)
             if "CO2_d" in t:
                 out[f.split("traj_")[-1].removesuffix(".csv.gz")] = t
@@ -152,15 +169,45 @@ def table_s2() -> None:
         line(f"all, deep at <= {cut} mg/L", b, cut)
 
 
+ROBUSTNESS = [  # (summary file, recipe for the yields: "base" or the scenario's own recipe, label)
+    ("summary_co2_off.csv", "own", "plant without CO2 inhibition"),
+    ("summary_oracle_sensor_points.csv", "base", "CO2 oracle at the sensor's switching points"),
+    ("summary_simplex_recipe.csv", "base", "Simplex switch falling back to the recipe"),
+    ("summary_margins_heldout.csv", "base", "4 and 5 mg/L margins, seeds 2023-2034"),
+    ("summary_blend_sweep.csv", "base", "constant blends"),
+    ("summary_graded_inhibition.csv", "own", "graded CO2 inhibition"),
+    ("summary_drift_dose.csv", "own", "oxygen transfer falling to 0.6, 0.5 or 0.3"),
+    ("summary_guard_misspecification.csv", "base", "guard switching point and sensor bias"),
+]
+
+
+def robustness(d: pd.DataFrame) -> None:
+    """Supplementary Table S5: the validity experiments, per controller and scenario: violating batches, deep
+    collapses, lowest oxygen and the median yield relative to the recipe on the same seed and plant."""
+    base = d[d.controller == "recipe"].set_index(["scenario", "seed"]).yield_kg
+    print("\nSupplementary Table S5: violating, deep, lowest DO (mg/L), yield vs recipe (%)")
+    for f, ref, label in ROBUSTNESS:
+        t = pd.read_csv(RES / f)
+        t["violating"] = ((t.steps_DO2_below_4 > 0) | t.catastrophic.astype(bool)).astype(int)
+        own = t[t.controller == "recipe"].set_index(["scenario", "seed"]).yield_kg
+        print(f"  {label}")
+        for (c, sc), g in t.groupby(["controller", "scenario"]):
+            rec = own if ref == "own" or c == "recipe" else base
+            ratio = np.median([y / rec[(sc, s)] for y, s in zip(g.yield_kg, g.seed)]) - 1
+            print(f"| {c} | {sc} | {len(g)} | {int(g.violating.sum())} | {int((g.min_DO2 <= DEEP).sum())} | {g.min_DO2.min():.2f} | {100 * ratio:+.0f} |")
+
+
 def main() -> None:
     d = load()
     tables(d)
+    spread(d)
     co2_and_collapses()
     sensor_error()
     simplex_handover()
     severity(d)
     co2_units()
     table_s2()
+    robustness(d)
 
 
 if __name__ == "__main__":
