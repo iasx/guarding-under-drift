@@ -32,9 +32,9 @@ sns.set_theme(context="paper")
 DEEP = sns.color_palette()
 BLEND_C, FILTER_C, GUARD_C, ACTOR_C, SENSOR_C = DEEP[0], DEEP[1], DEEP[2], DEEP[4], DEEP[8]
 LINE_C, TEXT_C = "0.2", "0.35"
-NAMES = {MARGIN: "filter, +3 mg/L margin", GUARDED: "guarded filter", BLEND: "monitored blend"}
+NAMES = {MARGIN: "Filter, +3 mg/L margin", GUARDED: "Guarded filter", BLEND: "Monitored blend"}
 GUARD_MARGINS = ((0, "projected24ms:0"), (1, "projected24ms:1"), (2, "projected24ms:2"), (3, "projected24ms"))
-COLORS = {"filter, +3 mg/L margin": FILTER_C, "guarded filter": GUARD_C, "monitored blend": BLEND_C}
+COLORS = {"Filter, +3 mg/L margin": FILTER_C, "Guarded filter": GUARD_C, "Monitored blend": BLEND_C}
 
 
 def violating(d: pd.DataFrame) -> pd.Series:
@@ -52,8 +52,8 @@ def arrow(ax, p, q, ls="-", color=INK, lw=0.9):
 
 def co2_batches() -> pd.DataFrame:
     """Peak dissolved CO2 after the drift onset and minimum oxygen for every drift batch with CO2 logged."""
-    groups = {"filters without a CO$_2$ guard": ["projected24t", "projected24c-0.8", "projected24c-0.6", "projected24s", MARGIN],
-              "guarded filter": [GUARDED], "blends": [BLEND, "hybrid-fixed-0.5"]}
+    groups = {"Filters without a CO$_2$ guard": ["projected24t", "projected24c-0.8", "projected24c-0.6", "projected24s", MARGIN],
+              "Guarded filter": [GUARDED], "Blends": [BLEND, "hybrid-fixed-0.5"]}
     rows = []
     for group, ctrls in groups.items():
         for c in ctrls:
@@ -117,7 +117,7 @@ def fig_mechanism(scenario: str = "S5", seed: int = 2016) -> None:
         t = t[t.t_h >= 90].assign(design=name, S=lambda d: np.maximum(d.S, 1e-4))
         frames.append(t[["t_h", "DO2", "CO2_d", "mu_X", "S", "design"]])
     d = pd.concat(frames, ignore_index=True)
-    panels = (("DO2", "oxygen (mg/L)"), ("CO2_d", "dissolved CO$_2$\n(10 mg/L)"), ("mu_X", "growth rate\n(1/h)"), ("S", "substrate\n(g/L)"))
+    panels = (("DO2", "Oxygen (mg/L)"), ("CO2_d", "Dissolved CO$_2$\n(10 mg/L)"), ("mu_X", "Growth rate\n(1/h)"), ("S", "Substrate\n(g/L)"))
     fig, axes = plt.subplots(4, 1, figsize=(16 * CM, 14 * CM), sharex=True)
     for i, (ax, (col, label)) in enumerate(zip(axes, panels)):
         ax.axvspan(100, 200, color="0.75", alpha=0.25, lw=0)
@@ -128,7 +128,7 @@ def fig_mechanism(scenario: str = "S5", seed: int = 2016) -> None:
     axes[1].axhline(SWITCH, color=LINE_C, lw=0.8, ls=(0, (2, 2)))
     axes[1].text(92, SWITCH + 0.06, "growth-inhibition threshold", fontsize=6.5, color=TEXT_C)
     axes[3].set_yscale("log")
-    axes[3].set_xlabel("batch time (h); drift from 100 h to 200 h (shaded)")
+    axes[3].set_xlabel("Batch time (h); drift from 100 h to 200 h (shaded)")
     sns.move_legend(axes[0], "lower center", bbox_to_anchor=(0.5, 1.02), ncol=3, title=None, frameon=False)
     panel_letters(axes, x=-0.2, y=0.8)
     fig.tight_layout()
@@ -148,7 +148,7 @@ def fig_co2() -> None:
     ax.axvline(SWITCH, color=LINE_C, lw=0.8, ls=(0, (3, 2))); ax.axhline(FLOOR, color=LINE_C, lw=0.8, ls=(0, (2, 2)))
     ax.text(SWITCH + 0.03, 10.3, "CO$_2$ threshold", fontsize=6.5, color=TEXT_C)
     ax.text(8.6, FLOOR + 0.15, "oxygen floor", fontsize=6.5, color=TEXT_C)
-    ax.set_xlabel("peak dissolved CO$_2$ after the drift begins (10 mg/L)"); ax.set_ylabel("lowest dissolved oxygen in the batch (mg/L)")
+    ax.set_xlabel("Peak dissolved CO$_2$ after the drift begins (10 mg/L)"); ax.set_ylabel("Lowest dissolved oxygen in the batch (mg/L)")
     sns.move_legend(ax, "lower center", bbox_to_anchor=(0.5, 1.01), ncol=2, title=None, frameon=False)
     save(fig, "fig3_co2.png")
 
@@ -165,7 +165,7 @@ def fig_margin() -> None:
     for ax, sc, title in ((axes[0], "S5", "Gradual drift"), (axes[1], "S5fast", "Fast drift")):
         sweep = pd.DataFrame([{"margin": m, "violating": int(violating(t[(t.controller == c) & (t.scenario == sc) & t.seed.between(2011, 2022)]).sum())}
                               for m, (f, c) in sorted(runs.items()) for t in [pd.read_csv(RES / f)]])
-        sns.lineplot(data=sweep, x="margin", y="violating", marker="o", color=FILTER_C, ax=ax, label="filter, seeds 2011–2022", legend=False)
+        sns.lineplot(data=sweep, x="margin", y="violating", marker="o", color=FILTER_C, ax=ax, label="Filter, seeds 2011–2022", legend=False)
         for m, c in ((0, "projected24t"), (3, "projected24m"), (4, "projected24m:4"), (5, "projected24m:5")):
             ax.plot(m, int(violating(held[(held.controller == c) & (held.scenario == sc)]).sum()), marker="D", ms=5, mfc="white", mec=FILTER_C, mew=1.2, ls="none")
         for seeds, mk, ls in (((2011, 2022), "^", "-"), ((2023, 2034), "v", (0, (1, 1.5)))):
@@ -175,13 +175,13 @@ def fig_margin() -> None:
                     marker=mk, ms=6, color=GUARD_C, ls=ls if len(margins) > 1 else "none", lw=1.1)
         b = blend[(blend.controller == "hybrid:convex:nofsm") & (blend.scenario == sc) & blend.seed.between(2011, 2022)]
         ax.axhline(int(violating(b).sum()), color=BLEND_C, lw=1, ls=(0, (3, 2)))
-        ax.set_title(title); ax.set_xlabel("oxygen margin added (mg/L)"); ax.set_ylim(-0.5, 12.5)
-    axes[0].set_ylabel("violating batches of 12")
-    axes[0].plot([], [], marker="o", color=FILTER_C, label="filter, seeds 2011–2022")
-    axes[0].plot([], [], marker="D", ms=5, mfc="white", mec=FILTER_C, ls="none", label="filter, seeds 2023–2034")
-    axes[0].plot([], [], marker="^", ms=6, color=GUARD_C, lw=1.1, label="guarded filter, 2011–2022")
-    axes[0].plot([], [], marker="v", ms=6, color=GUARD_C, lw=1.1, ls=(0, (1, 1.5)), label="guarded filter, 2023–2034")
-    axes[0].plot([], [], color=BLEND_C, lw=1, ls=(0, (3, 2)), label="monitored blend, 2011–2022")
+        ax.set_title(title); ax.set_xlabel("Oxygen margin added (mg/L)"); ax.set_ylim(-0.5, 12.5)
+    axes[0].set_ylabel("Violating batches of 12")
+    axes[0].plot([], [], marker="o", color=FILTER_C, label="Filter, seeds 2011–2022")
+    axes[0].plot([], [], marker="D", ms=5, mfc="white", mec=FILTER_C, ls="none", label="Filter, seeds 2023–2034")
+    axes[0].plot([], [], marker="^", ms=6, color=GUARD_C, lw=1.1, label="Guarded filter, 2011–2022")
+    axes[0].plot([], [], marker="v", ms=6, color=GUARD_C, lw=1.1, ls=(0, (1, 1.5)), label="Guarded filter, 2023–2034")
+    axes[0].plot([], [], color=BLEND_C, lw=1, ls=(0, (3, 2)), label="Monitored blend, 2011–2022")
     handles, labels = axes[0].get_legend_handles_labels()
     keep = dict(zip(labels, handles))
     axes[0].legend(keep.values(), keep.keys(), loc="upper right", fontsize=6.2)
