@@ -1,6 +1,6 @@
 # guarding-under-drift
 
-[![DOI](https://zenodo.org/badge/1414611650.svg)](https://doi.org/10.5281/zenodo.23339974)
+[![DOI](https://zenodo.org/badge/1414611650.svg)](https://doi.org/10.5281/zenodo.23339975)
 
 Code, trained models and results for *Guarding an unmodeled carbon-dioxide state for safe learning-based fermentation control
 under gradual process drift*: a learned controller for the IndPenSim penicillin fermentation executed through safety
