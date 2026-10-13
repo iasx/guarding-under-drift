@@ -165,7 +165,7 @@ def fig_margin() -> None:
     for ax, sc, title in ((axes[0], "S5", "Gradual drift"), (axes[1], "S5fast", "Fast drift")):
         sweep = pd.DataFrame([{"margin": m, "violating": int(violating(t[(t.controller == c) & (t.scenario == sc) & t.seed.between(2011, 2022)]).sum())}
                               for m, (f, c) in sorted(runs.items()) for t in [pd.read_csv(RES / f)]])
-        sns.lineplot(data=sweep, x="margin", y="violating", marker="o", color=FILTER_C, ax=ax, label="Filter, seeds 2011–2022", legend=False)
+        sns.lineplot(data=sweep, x="margin", y="violating", marker="o", color=FILTER_C, ax=ax, label="Filter, design set", legend=False)
         for m, c in ((0, "projected24t"), (3, "projected24m"), (4, "projected24m:4"), (5, "projected24m:5")):
             ax.plot(m, int(violating(held[(held.controller == c) & (held.scenario == sc)]).sum()), marker="D", ms=5, mfc="white", mec=FILTER_C, mew=1.2, ls="none")
         for seeds, mk, ls in (((2011, 2022), "^", "-"), ((2023, 2034), "v", (0, (1, 1.5)))):
@@ -177,11 +177,11 @@ def fig_margin() -> None:
         ax.axhline(int(violating(b).sum()), color=BLEND_C, lw=1, ls=(0, (3, 2)))
         ax.set_title(title); ax.set_xlabel("Oxygen margin added (mg/L)"); ax.set_ylim(-0.5, 12.5)
     axes[0].set_ylabel("Violating batches of 12")
-    axes[0].plot([], [], marker="o", color=FILTER_C, label="Filter, seeds 2011–2022")
-    axes[0].plot([], [], marker="D", ms=5, mfc="white", mec=FILTER_C, ls="none", label="Filter, seeds 2023–2034")
-    axes[0].plot([], [], marker="^", ms=6, color=GUARD_C, lw=1.1, label="Guarded filter, 2011–2022")
-    axes[0].plot([], [], marker="v", ms=6, color=GUARD_C, lw=1.1, ls=(0, (1, 1.5)), label="Guarded filter, 2023–2034")
-    axes[0].plot([], [], color=BLEND_C, lw=1, ls=(0, (3, 2)), label="Monitored blend, 2011–2022")
+    axes[0].plot([], [], marker="o", color=FILTER_C, label="Filter, design set")
+    axes[0].plot([], [], marker="D", ms=5, mfc="white", mec=FILTER_C, ls="none", label="Filter, held-out set")
+    axes[0].plot([], [], marker="^", ms=6, color=GUARD_C, lw=1.1, label="Guarded filter, design set")
+    axes[0].plot([], [], marker="v", ms=6, color=GUARD_C, lw=1.1, ls=(0, (1, 1.5)), label="Guarded filter, held-out set")
+    axes[0].plot([], [], color=BLEND_C, lw=1, ls=(0, (3, 2)), label="Monitored blend, design set")
     handles, labels = axes[0].get_legend_handles_labels()
     keep = dict(zip(labels, handles))
     axes[0].legend(keep.values(), keep.keys(), loc="upper right", fontsize=6.2)
