@@ -6,10 +6,10 @@ filters, blends and a CO₂-guarded filter under process drift.
 
 ## Setup
 
-Python 3.12 and [uv](https://docs.astral.sh/uv/). The simulator is a fork of PenSimPy
-([iasx/PenSimPy](https://github.com/iasx/PenSimPy)), fetched from GitHub at the pinned commit by `uv sync`; the
-archive of this repository does not contain it. PyTorch comes from the CUDA 13 index on Linux and Windows and from
-PyPI on macOS; no GPU is needed to run the experiments, and the analysis scripts need neither PyTorch nor the simulator.
+Python 3.12 and [uv](https://docs.astral.sh/uv/). The modified PenSimPy simulator is included in `vendor/pensimpy`
+(copied from [iasx/PenSimPy](https://github.com/iasx/PenSimPy); MIT licence), so the repository is self-contained.
+PyTorch comes from the CUDA 13 index on Linux and Windows and from PyPI on macOS; no GPU is needed to run the
+experiments, and the analysis scripts need neither PyTorch nor the simulator.
 
 ```bash
 uv sync
@@ -69,6 +69,7 @@ statistically rather than exactly.
 ## Layout
 
 - `src/sindy_fno/` — plant wrapper, identified model and MPC, safety filters, blend, actor, soft sensor
+- `vendor/pensimpy/` — the IndPenSim simulator (PenSimPy) as modified for the study
 - `experiments/` — run and training scripts
 - `analysis/` — statistics, numbers and figures of the article
 - `models/` — the trained models used in the article
