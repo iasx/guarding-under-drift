@@ -7,7 +7,9 @@ filters, blends and a CO₂-guarded filter under process drift.
 ## Setup
 
 Python 3.12 and [uv](https://docs.astral.sh/uv/). The simulator is a fork of PenSimPy
-([iasx/PenSimPy](https://github.com/iasx/PenSimPy)) and is installed as a dependency.
+([iasx/PenSimPy](https://github.com/iasx/PenSimPy)), fetched from GitHub at the pinned commit by `uv sync`; the
+archive of this repository does not contain it. PyTorch comes from the CUDA 13 index on Linux and Windows and from
+PyPI on macOS; no GPU is needed to run the experiments, and the analysis scripts need neither PyTorch nor the simulator.
 
 ```bash
 uv sync
